@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="icon" href="data:,">
+<title>Mansión Valdemar — Juego de terror</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #ddd; font-family: Georgia, 'Times New Roman', serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.95) 100%); opacity: .5; }
+  #grain { position: fixed; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: overlay; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(0,0,0,.88); z-index: 20; padding: 20px; }
+  .screen.show { display: flex; }
+  h1 { font-size: clamp(36px, 8vw, 84px); margin: 0 0 6px; color: #b01010; letter-spacing: 6px; text-shadow: 0 0 20px #600, 3px 3px 0 #000; animation: flick 4s infinite; }
+  @keyframes flick { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.2} 94%{opacity:1} 96%{opacity:.4} 97%{opacity:1} }
+  .sub { color: #aaa; max-width: 640px; line-height: 1.5; }
+  .warn { color: #e0a040; font-size: 14px; margin: 10px 0; }
+  .btn { background: #2a0606; color: #eee; border: 1px solid #a01010; padding: 12px 26px; font-size: 20px; margin: 8px; cursor: pointer; font-family: inherit; border-radius: 4px; }
+  .btn:hover { background: #600; }
+  .controls { font-size: 14px; color: #999; margin-top: 14px; line-height: 1.6; }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
+  #hud.show { display: block; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.5); }
+  #prompt { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font-size: 18px; color: #eee; text-shadow: 0 0 6px #000; white-space: nowrap; }
+  #prompt b { background: #eee; color: #000; padding: 1px 7px; border-radius: 3px; }
+  #msg { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); max-width: 80vw; text-align: center; font-size: 20px; color: #e8d8c8; text-shadow: 0 0 8px #000, 0 0 2px #000; opacity: 0; transition: opacity .5s; }
+  #msg.show { opacity: 1; }
+  #stats { position: absolute; left: 16px; bottom: 16px; font-size: 14px; color: #bbb; text-shadow: 0 0 4px #000; }
+  .bar { width: 160px; height: 8px; background: rgba(255,255,255,.12); margin: 3px 0 8px; }
+  .bar div { height: 100%; background: #8c6; }
+  #stam { background: #6ac !important; }
+  #topinfo { position: absolute; left: 16px; top: 12px; font-size: 15px; color: #ccc; text-shadow: 0 0 4px #000; max-width: 60vw; }
+  #objective { color: #e0c090; }
+  #room { position: absolute; right: 16px; top: 12px; color: #999; font-size: 15px; }
+  #sanity { font-size: 18px; letter-spacing: 3px; }
+  #puzzle { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.82); }
+  #puzzle.show { display: flex; }
+  .pz-box { position: relative; background: #120a08; border: 1px solid #5a2a1a; padding: 18px 22px 22px; max-width: 96vw; max-height: 96vh; overflow: auto; text-align: center; box-shadow: 0 0 60px #300; }
+  .pz-box h2 { margin: 4px 40px 6px; color: #c03020; }
+  .pz-hint { color: #bba; max-width: 760px; margin: 0 auto 12px; line-height: 1.4; }
+  .pz-close { position: absolute; right: 8px; top: 8px; background: #000; color: #aaa; border: 1px solid #444; padding: 4px 10px; cursor: pointer; font-family: inherit; }
+  .pz-go { background: #3a0808; color: #eee; border: 1px solid #a01010; padding: 10px 22px; font-size: 18px; margin: 12px 6px 4px; cursor: pointer; font-family: inherit; }
+  .wheels { display: flex; justify-content: center; gap: 14px; }
+  .wheel { display: flex; flex-direction: column; align-items: center; background: #2a2018; border: 2px solid #6a5030; padding: 6px; border-radius: 6px; }
+  .wheel button { background: #1a120c; color: #ccc; border: 1px solid #5a4020; width: 54px; height: 36px; font-size: 18px; cursor: pointer; }
+  .wval { font-size: 42px; width: 64px; height: 64px; line-height: 64px; color: #f0e0c0; font-family: 'DejaVu Sans', 'Segoe UI Symbol', 'Noto Sans Symbols', Georgia, serif; }
+  .piano { display: flex; justify-content: center; margin-top: 10px; }
+  .pkey { width: 62px; height: 190px; background: linear-gradient(#f4efe0, #cfc6b0); border: 2px solid #222; color: #333; font-family: inherit; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 10px; cursor: pointer; touch-action: none; }
+  .pkey.down { background: #c8b890; transform: translateY(3px); }
+  .pkey small { color: #888; }
+  .pz-prog { font-size: 22px; letter-spacing: 4px; color: #e0c090; min-height: 30px; margin-top: 8px; }
+  .portraits { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .portraits canvas { width: 120px; height: 152px; cursor: pointer; border: 3px solid transparent; }
+  .portraits canvas.sel { border-color: #e0c040; box-shadow: 0 0 16px #e0c040; }
+  .pz-canvas { width: min(92vw, 800px); height: auto; aspect-ratio: 8/5; display: block; margin: 0 auto; touch-action: none; cursor: crosshair; }
+  #scare { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 50; display: none; background: #000; }
+  #scare.show { display: block; }
+  #note { z-index: 35; }
+  .paper { background: #d8ccae; color: #2a1a0a; max-width: 620px; max-height: 80vh; overflow: auto; padding: 26px 30px; text-align: left; font-size: 18px; line-height: 1.5; box-shadow: 0 0 50px #000; font-family: 'Courier New', Georgia, serif; }
+  .paper h3 { margin-top: 0; color: #5a0a0a; }
+  .paper h4 { margin-bottom: 4px; color: #5a0a0a; }
+  #pause { z-index: 25; cursor: pointer; }
+  #touch { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  #touch.show { display: block; }
+  #stick { position: absolute; left: 24px; bottom: 60px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2); pointer-events: auto; }
+  #knob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.25); }
+  .tbtn { position: absolute; pointer-events: auto; width: 74px; height: 74px; border-radius: 50%; background: rgba(120,0,0,.35); border: 2px solid rgba(255,255,255,.3); color: #fff; font-size: 13px; font-family: inherit; }
+  .tbtn.on { background: rgba(60,120,200,.5); }
+  #tUse { right: 24px; bottom: 120px; width: 90px; height: 90px; font-size: 16px; }
+  #tLight { right: 130px; bottom: 60px; }
+  #tRun { right: 24px; bottom: 24px; }
+  #tDiary { right: 24px; top: 50px; width: 60px; height: 60px; }
+  @media (pointer: coarse) { #stats { bottom: 200px; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="prompt"></div>
+  <div id="msg"></div>
+  <div id="topinfo"><div id="progress">Puzzles: 0/7</div><div id="objective"></div></div>
+  <div id="room"></div>
+  <div id="stats">
+    Cordura <span id="sanity"></span>
+    <div>Linterna</div><div class="bar"><div id="batt"></div></div>
+    <div>Aliento</div><div class="bar"><div id="stam"></div></div>
+  </div>
+</div>
+
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tbtn" id="tUse">USAR</button>
+  <button class="tbtn" id="tLight">LUZ</button>
+  <button class="tbtn" id="tRun">CORRER</button>
+  <button class="tbtn" id="tDiary">📜</button>
+</div>
+
+<div id="start" class="screen show">
+  <h1>MANSIÓN VALDEMAR</h1>
+  <p class="sub">1887. La familia Valdemar desapareció uno a uno dentro de esta casa. Tú acabas de entrar... y la puerta se cerró detrás de ti.<br>Resuelve los <b>7 puzzles</b> de la mansión para abrir nuevas zonas y escapar. Cada error tiene un precio.<br>Y ten cuidado: <b>ella</b> te está buscando.</p>
+  <p class="warn">⚠ Contiene sustos fuertes, luces parpadeantes y gritos. Recomendado 14+. Mejor con audífonos y a oscuras.</p>
+  <div>
+    <button class="btn" id="btnStart">ENTRAR</button>
+    <button class="btn" id="btnContinue" style="display:none">Continuar</button>
+  </div>
+  <div class="controls">
+    <b>Computadora:</b> WASD / flechas = moverse · Ratón = mirar · Shift = correr · E o clic = usar/examinar · F o clic derecho = linterna · Tab/N = diario de notas · Esc = pausa<br>
+    <b>Celular:</b> joystick izquierdo = moverse · desliza a la derecha = mirar · botones USAR, LUZ, CORRER<br>
+    Consejo: si la ves acercarse, <b>apúntale con la linterna</b> unos segundos. Odia la luz... pero gasta batería.
+  </div>
+</div>
+
+<div id="pause" class="screen"><h2>PAUSA</h2><p class="sub">Haz clic para continuar.<br>(Algo sigue respirando en la oscuridad...)</p></div>
+
+<div id="note" class="screen"><div class="paper"><h3 id="noteTitle"></h3><div id="noteText"></div><p style="text-align:center;margin-bottom:0"><button class="btn" id="noteClose">Cerrar (E)</button></p></div></div>
+
+<div id="puzzle"></div>
+<canvas id="scare"></canvas>
+
+<div id="gameover" class="screen">
+  <h1>HAS MUERTO</h1>
+  <p class="sub" id="goText"></p>
+  <div><button class="btn" id="btnCp">Reintentar desde el último punto</button><button class="btn" id="btnRestart">Empezar de cero</button></div>
+</div>
+
+<div id="victory" class="screen">
+  <h1 style="color:#c0a060">ESCAPASTE</h1>
+  <p class="sub" id="vicText"></p>
+  <button class="btn" id="btnAgain">Jugar otra vez</button>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
